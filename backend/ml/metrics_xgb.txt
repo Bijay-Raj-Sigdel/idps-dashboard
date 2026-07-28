@@ -1,0 +1,24 @@
+XGBoost Evaluation
+Macro-F1: 0.7422
+
+                            precision    recall  f1-score   support
+
+                    BENIGN     0.9999    0.9740    0.9868    391786
+                       Bot     0.0691    0.9948    0.1292       386
+                      DDoS     0.9983    0.9995    0.9989     25538
+             DoS GoldenEye     0.8109    0.9951    0.8936      2056
+                  DoS Hulk     0.9852    0.9966    0.9909     33270
+          DoS Slowhttptest     0.9024    0.9923    0.9452      1043
+             DoS slowloris     0.9261    0.9940    0.9588       996
+               FTP-Patator     0.9918    0.9988    0.9953       851
+                Heartbleed     1.0000    1.0000    1.0000         2
+              Infiltration     0.7778    1.0000    0.8750         7
+                  PortScan     0.9871    0.9992    0.9931     18124
+               SSH-Patator     0.7740    1.0000    0.8726       630
+  Web Attack - Brute Force     0.0923    0.6035    0.1601       285
+Web Attack - Sql Injection     0.1500    0.7500    0.2500         4
+          Web Attack - XSS     0.0446    0.7000    0.0838       130
+
+                  accuracy                         0.9779    475108
+                 macro avg     0.7006    0.9332    0.7422    475108
+              weighted avg     0.9952    0.9779    0.9858    475108

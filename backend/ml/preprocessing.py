@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def load_and_preprocess(filepath: str) -> pd.DataFrame:
     """
     Loads an IDS dataset, filters specific columns, handles missing/infinite
@@ -45,10 +46,3 @@ def load_and_preprocess(filepath: str) -> pd.DataFrame:
     new_table['Label'] = new_table['Label'].str.replace('�', '-', regex=False)
 
     return new_table
-
-
-if __name__ == "__main__":
-    # Example usage:
-    # cleaned_df = load_and_preprocess("ids.csv")
-    # print(cleaned_df['Label'].value_counts())
-    pass
