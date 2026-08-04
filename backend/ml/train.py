@@ -2,6 +2,7 @@ import glob
 import os
 import pandas as pd
 import joblib
+import numpy as np
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -9,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, f1_score
 from sklearn.utils.class_weight import compute_sample_weight
 from xgboost import XGBClassifier
+from sklearn.metrics import confusion_matrix
 
 # 1. Importing established preprocessing function
 from ml.preprocessing import load_and_preprocess
@@ -167,6 +169,59 @@ def main():
         f.write(xgb_report)
 
     print(f"  [SAVED] Performance logs -> metrics_rf.txt and metrics_xgb.txt")
+
+    # Theory Verification Diagnostics (Confusion matrices)
+    print("\n Compiling Diagnostic Confusion Matrices")
+
+    cm_rf = confusion_matrix(y_test, y_pred_rf)
+    cm_xgb = confusion_matrix(y_test, y_pred_xgb)
+    classes = list(label_encoder.classes_)
+
+    # Save raw confusion matrices to separate logs for deep inspection
+    np.savetxt(os.path.join(OUTPUT_ML_DIR, "cm_rf.txt"), cm_rf, fmt="%d")
+    np.savetxt(os.path.join(OUTPUT_ML_DIR,"cm_xgb.txt"), cm_xgb, fmt="%d")
+
+    # Defining Targets to track for subtype Confusion Vs BENIGN Bleed
+    target_subtypes = ["Web Attack - XSS", "Web Attack - Brute Force", "Web Attack - Sql Injection", "Bot"]
+    subtype_indices = [classes.index(c) for c in target_subtypes if c in classes]
+
+    try:
+        benign_idx = classes.index("BENIGN")
+
+        for name, cm in[("Random Forest", cm_rf), ("XGBoost", cm_xgb)]:
+            print(f"\n--- {name} Theary Daignostics ---")
+
+            # Diagnostic 1: BENIGN Bleed Check (Where did misclassified BENIGN samples go?)
+            benign_row = cm[benign_idx].copy()
+            benign_row[benign_idx] = 0 # Zero out the correct diagonal
+            total_benign_errors = benign_row.sum()
+            bleed_to_subtypes = sum(benign_row[idx] for idx in subtype_indices)
+            
+            print(f"  [BENIGN Bleed Check]")
+            print(f"    Total BENIGN samples misclassified: {total_benign_errors}")
+            if total_benign_errors > 0:
+                bleed_pct = (bleed_to_subtypes / total_benign_errors) * 100
+                print(f"    Leaked directly into weak web attack buckets: {bleed_to_subtypes} ({bleed_pct:.2f}%)")
+
+    # Diagnostic 2: Subtype Confusion Check (XSS Row Isolation example)
+            if "Web Attack - XSS" in classes:
+                xss_idx = classes.index("Web Attack - XSS")
+                xss_row = cm[xss_idx].copy()
+                correct_xss = xss_row[xss_idx]
+                xss_row[xss_idx] = 0 # Zero out the correct diagonal
+                total_xss_errors = xss_row.sum()
+                
+                print(f"  [XSS Row Isolation]")
+                print(f"    Correctly predicted: {correct_xss} | Total Errors: {total_xss_errors}")
+                if total_xss_errors > 0:
+                    xss_to_benign = xss_row[benign_idx]
+                    xss_to_other_attacks = sum(xss_row[idx] for idx in subtype_indices if idx != xss_idx)
+                    
+                    print(f"    -> Diverted to BENIGN (Harmless Bleed): {xss_to_benign} ({(xss_to_benign/total_xss_errors)*100:.2f}%)")
+                    print(f"    -> Diverted to other Web Subtypes (Confusion): {xss_to_other_attacks} ({(xss_to_other_attacks/total_xss_errors)*100:.2f}%)")
+    except ValueError as e:
+        print(f"  [WARNING] Could not parse labels for automated report: {e}")
+
 
     # 9. Serialize Production Artifacts
     print(f"\nSerializing training production artifacts to {OUTPUT_ML_DIR}...")
