@@ -1,20 +1,46 @@
-﻿# Python
-__pycache__/
-*.pyc
+﻿# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Virtual Environments
+.venv/
 venv/
-*.pkl
+env/
+ENV/
 
-# Data
-backend/data/raw/
+# Python / Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Node
+# Node / Frontend
 node_modules/
 dist/
+dist-ssr/
+build/
+.vite/
+*.local
 
-# Env
+# Environment Variables (Crucial for Security!)
 .env
+.env.local
+.env.*.local
 
-# OS
-.DS_Store
+# Database / Local SQLite (If testing locally)
+*.db
+*.sqlite3
 
+# IDEs & Code Editors
 .vscode/
+.idea/
+*.swp
+*.
+
+# ML Artifacts & Data
+backend/data/
+*.pkl

@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 
-from app.schemas import PredictionRequest, PredictionResponse
-from app.model import model_handler
-from app.db import get_db
+from app.db import engine, Base
+import app.db_models
+from app.routes import router
+
+# Automatically create database tables if they do not exist
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="IDPS Threat Detection Engine API",
@@ -22,54 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/health", status_code=status.HTTP_200_OK)
-def health_check(db: Session = Depends(get_db)):
-    """
-    Health check endpoint that verifies API readiness, model state,
-    and PostgreSQL connectivity.
-    """
-    try:
-        # Execute quick DB connectivity probe
-        db.execute(text("SELECT 1"))
-        db_status = "connected"
-    except Exception as e:
-        db_status = f"unreachable ({str(e)})"
-
-    return {
-        "status": "healthy",
-        "database": db_status,
-        "model_loaded": model_handler.model is not None,
-        "expected_features": model_handler.feature_count
-    }
-
-
-@app.post("/predict", response_model=PredictionResponse, status_code=status.HTTP_200_OK)
-def predict_flow(request: PredictionRequest):
-    """
-    Accepts raw network flow features, validates them using Pydantic,
-    executes model inference, and returns predicted threat class with confidence.
-    """
-    try:
-        # Convert request to dict using aliases (e.g. "Destination Port")
-        payload = request.model_dump(by_alias=True)
-        
-        # Execute model prediction
-        result = model_handler.predict(payload)
-        
-        return PredictionResponse(**result)
-    except ValueError as ve:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(ve)
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Inference pipeline failed: {str(e)}"
-        )
-
-
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

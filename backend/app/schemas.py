@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict
+from datetime import datetime
 
 class PredictionRequest(BaseModel):
     """
@@ -56,4 +57,18 @@ class PredictionResponse(BaseModel):
     prediction: str
     prediction_id: int
     confidence: Optional[float] = None
+    probabilities: Optional[Dict[str, float]] = None
+
+class PredictionLogOut(BaseModel):
+    """
+    Pydantic schema for serializing PredictionLog rows returned by GET /logs.
+    from_attributes=True lets this read directly off the SQLAlchemy ORM object.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    timestamp: datetime
+    predicted_label: str
+    prediction_id: int
+    confidence: float
     probabilities: Optional[Dict[str, float]] = None

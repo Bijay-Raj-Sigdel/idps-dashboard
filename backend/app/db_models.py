@@ -1,0 +1,18 @@
+import datetime
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from app.db import Base
+
+
+class PredictionLog(Base):
+    __tablename__ = "prediction_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True)
+    # Store the 15 input features as JSON
+    input_features = Column(JSON, nullable=False)
+    
+    # Inference outputs
+    predicted_label = Column(String, nullable=False, index=True)
+    prediction_id = Column(Integer, nullable=False)
+    confidence = Column(Float, nullable=False)
+    probabilities = Column(JSON, nullable=True)
