@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from datetime import datetime
 
 class PredictionRequest(BaseModel):
@@ -72,3 +72,20 @@ class PredictionLogOut(BaseModel):
     prediction_id: int
     confidence: float
     probabilities: Optional[Dict[str, float]] = None
+
+class LabelCount(BaseModel):
+    label: str
+    count: int
+
+class VolumeBucket(BaseModel):
+    time: str
+    count: int
+    threats: int
+
+class StatsSummaryResponse(BaseModel):
+    total_inspected: int
+    benign_count: int
+    threat_count: int
+    avg_confidence: float
+    label_distribution: List[LabelCount]
+    volume_over_time: List[VolumeBucket]
