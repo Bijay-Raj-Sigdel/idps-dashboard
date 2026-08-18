@@ -1,177 +1,302 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import FilterBar from '../components/FilterBar';
+import DetailModal from '../components/DetailModal';
 import { 
-  ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, 
-  XAxis, YAxis, Tooltip, Legend, CartesianGrid 
+  Activity, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Gauge, 
+  Loader2, 
+  ExternalLink, 
+  AlertTriangle,
+  TrendingUp,
+  PieChart as PieIcon
+} from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell 
 } from 'recharts';
-import { Activity, ShieldAlert, ShieldCheck, Gauge, Loader2 } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
-const PIE_COLORS = ['#10B981', '#EF4444', '#F59E0B', '#6366F1', '#EC4899', '#8B5CF6'];
+
+const COLOR_MAP = {
+  BENIGN: '#10b981',
+  DDoS: '#f43f5e',
+  PortScan: '#f59e0b',
+  Bot: '#8b5cf6',
+  DEFAULT: '#6366f1'
+};
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [filters, setFilters] = useState({ attackType: '', startDate: '' });
+  const [selectedPrediction, setSelectedPrediction] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchStats = async () => {
+  const fetchData = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/stats/summary`);
-      setStats(res.data);
+      const queryParams = new URLSearchParams({ limit: '20' });
+      if (filters.attackType) queryParams.append('attack_type', filters.attackType);
+      if (filters.startDate) queryParams.append('start_date', filters.startDate);
+
+      const [statsRes, logsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/stats/summary`),
+        fetch(`${API_BASE_URL}/logs?${queryParams.toString()}`)
+      ]);
+
+      if (!statsRes.ok || !logsRes.ok) {
+        throw new Error('Failed to fetch from backend');
+      }
+
+      const statsData = await statsRes.json();
+      const logsData = await logsRes.json();
+
+      setStats(statsData);
+      setLogs(logsData);
       setError(null);
     } catch (err) {
-      console.error("Error fetching stats summary:", err);
-      setError("Failed to sync with threat engine backend.");
+      console.error("Error fetching dashboard data:", err);
+      setError("Unable to connect to IDPS Threat Detection Engine backend.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 3000); // Poll every 3s
+    fetchData();
+    const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [filters]);
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-3" />
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-3" />
         <p className="text-sm font-medium">Initializing Security Analytics Dashboard...</p>
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-6 bg-red-950/40 border border-red-800 rounded-xl text-red-300 text-center my-8">
-        <ShieldAlert className="w-10 h-10 mx-auto mb-2 text-red-500" />
-        <p className="font-semibold">{error}</p>
-        <p className="text-xs text-red-400 mt-1">Ensure FastAPI server is active on {API_BASE_URL}</p>
-      </div>
-    );
-  }
+  // Fallbacks for metric counts
+  const totalCount = stats?.total_inspected ?? stats?.total_predictions ?? 0;
+  const threatCount = stats?.threat_count ?? stats?.threats_detected ?? 0;
+  const benignCount = stats?.benign_count ?? 0;
+  const avgConf = stats?.avg_confidence ? `${(stats.avg_confidence * 100).toFixed(1)}%` : 'N/A';
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 text-slate-100">
       
-      {/* 1. Metric Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard 
-          title="Total Inspected" 
-          value={stats.total_inspected.toLocaleString()} 
-          icon={<Activity className="text-blue-400" />} 
-          subtext="Processed Network Flows"
-        />
-        <MetricCard 
-          title="Benign Traffic" 
-          value={stats.benign_count.toLocaleString()} 
-          icon={<ShieldCheck className="text-emerald-400" />} 
-          subtext="Normal Activity"
-        />
-        <MetricCard 
-          title="Threats Detected" 
-          value={stats.threat_count.toLocaleString()} 
-          icon={<ShieldAlert className="text-rose-500" />} 
-          subtext="Malicious Incidents"
-          alert={stats.threat_count > 0}
-        />
-        <MetricCard 
-          title="Mean Confidence" 
-          value={`${stats.avg_confidence}%`} 
-          icon={<Gauge className="text-amber-400" />} 
-          subtext="Model Classification Certainty"
-        />
-      </div>
+      {/* Backend Connection Alert */}
+      {error && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-400 text-sm">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-      {/* 2. Visualizations Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Traffic Volume Line Chart (2 Cols) */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-200">Traffic Volume & Threats Over Time</h3>
-            <div className="flex items-center gap-2 text-xs px-2.5 py-1 bg-slate-800 text-slate-300 rounded-md border border-slate-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              <span>Live Stream</span>
-            </div>
+      {/* 1. TOP METRIC CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md flex justify-between items-start">
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Ingested</p>
+            <p className="text-2xl font-bold text-white">{totalCount}</p>
           </div>
-          {stats.volume_over_time.length === 0 ? (
-            <EmptyState message="No flow traffic recorded yet." />
-          ) : (
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.volume_over_time}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis dataKey="time" stroke="#94A3B8" fontSize={12} />
-                  <YAxis stroke="#94A3B8" fontSize={12} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="count" name="Total Volume" stroke="#3B82F6" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="threats" name="Threats" stroke="#EF4444" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400">
+            <Activity className="w-5 h-5" />
+          </div>
         </div>
 
-        {/* Attack Type Distribution Pie Chart (1 Col) */}
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
-          <h3 className="font-semibold text-slate-200 mb-4">Classification Breakdown</h3>
-          {stats.label_distribution.length === 0 ? (
-            <EmptyState message="No classifications available." />
-          ) : (
-            <div className="h-72 w-full">
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md flex justify-between items-start">
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Threats Detected</p>
+            <p className="text-2xl font-bold text-rose-400">{threatCount}</p>
+          </div>
+          <div className="p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md flex justify-between items-start">
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Benign Traffic</p>
+            <p className="text-2xl font-bold text-emerald-400">{benignCount}</p>
+          </div>
+          <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md flex justify-between items-start">
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Avg Confidence</p>
+            <p className="text-2xl font-bold text-indigo-400">{avgConf}</p>
+          </div>
+          <div className="p-2 bg-indigo-500/10 border border-indigo-500/20 rounded-lg text-indigo-400">
+            <Gauge className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. CHARTS SECTION */}
+      {stats && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Traffic Volume & Threat Area Chart */}
+          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-indigo-400" />
+                <h3 className="font-semibold text-slate-200 text-sm">Real-Time Traffic & Threats</h3>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-slate-400">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Total Volume</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Threats</span>
+              </div>
+            </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.volume_over_time || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorThreats" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
+                  />
+                  <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorCount)" />
+                  <Area type="monotone" dataKey="threats" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorThreats)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Classification Breakdown Donut Chart */}
+          <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg flex flex-col justify-between">
+            <div className="flex items-center gap-2 mb-2">
+              <PieIcon className="w-4 h-4 text-indigo-400" />
+              <h3 className="font-semibold text-slate-200 text-sm">Classification Distribution</h3>
+            </div>
+            <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={stats.label_distribution}
+                    data={stats.label_distribution || []}
                     dataKey="count"
                     nameKey="label"
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
-                    label={({ label, percent }) => `${label} (${(percent * 100).toFixed(0)}%)`}
-                    labelLine={false}
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
                   >
-                    {stats.label_distribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    {(stats.label_distribution || []).map((entry, idx) => (
+                      <Cell key={idx} fill={COLOR_MAP[entry.label] || COLOR_MAP.DEFAULT} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', color: '#F8FAFC' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          )}
+            <div className="flex flex-wrap justify-center gap-3 pt-2 text-xs">
+              {(stats.label_distribution || []).map((entry, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLOR_MAP[entry.label] || COLOR_MAP.DEFAULT }}></span>
+                  <span className="text-slate-300 font-medium">{entry.label}:</span>
+                  <span className="text-slate-400">{entry.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. FILTER BAR */}
+      <FilterBar filters={filters} setFilters={setFilters} />
+
+      {/* 4. PREDICTION LOGS TABLE */}
+      <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-slate-200">Recent Prediction Activity</h3>
+          <span className="text-xs text-slate-500">Click any row to open detail modal</span>
         </div>
 
+        {logs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-slate-500 border border-dashed border-slate-800 rounded-lg">
+            <p className="text-sm">No matching telemetry logs found for active filters.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
+                  <th className="py-3 px-4">Prediction ID</th>
+                  <th className="py-3 px-4">Timestamp</th>
+                  <th className="py-3 px-4">Classification</th>
+                  <th className="py-3 px-4">Confidence</th>
+                  <th className="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-sm">
+                {logs.map((log) => (
+                  <tr 
+                    key={log.id} 
+                    onClick={() => setSelectedPrediction(log)}
+                    className="hover:bg-slate-800/50 cursor-pointer transition-colors group"
+                  >
+                    <td className="py-3 px-4 font-mono text-xs text-slate-300">{log.prediction_id}</td>
+                    <td className="py-3 px-4 text-slate-400 text-xs">
+                      {new Date(log.timestamp).toLocaleTimeString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        log.predicted_label === 'BENIGN' 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}>
+                        {log.predicted_label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-slate-300 text-xs">
+                      {(log.confidence * 100).toFixed(1)}%
+                    </td>
+                    <td className="py-3 px-4 text-right text-xs text-indigo-400 group-hover:text-indigo-300">
+                      <span className="inline-flex items-center gap-1">
+                        View Details <ExternalLink className="w-3 h-3" />
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
 
-// Sub-components
-function MetricCard({ title, value, icon, subtext, alert }) {
-  return (
-    <div className={`p-5 bg-slate-900 border rounded-xl shadow-md transition-all ${
-      alert ? 'border-rose-500/50 bg-rose-950/10' : 'border-slate-800'
-    }`}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-400">{title}</span>
-        <div className="p-2 bg-slate-800/80 rounded-lg">{icon}</div>
-      </div>
-      <div className="mt-2">
-        <span className="text-2xl font-bold text-slate-100">{value}</span>
-      </div>
-      <p className="text-xs text-slate-500 mt-1">{subtext}</p>
-    </div>
-  );
-}
-
-function EmptyState({ message }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-60 text-slate-500 border border-dashed border-slate-800 rounded-lg">
-      <p className="text-sm">{message}</p>
+      {/* 5. SLIDE-OVER DETAIL MODAL */}
+      {selectedPrediction && (
+        <DetailModal 
+          prediction={selectedPrediction} 
+          onClose={() => setSelectedPrediction(null)} 
+        />
+      )}
     </div>
   );
 }

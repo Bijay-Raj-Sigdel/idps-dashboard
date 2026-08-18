@@ -1,0 +1,49 @@
+services:
+  # Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: idps-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: idps_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d idps_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend FastAPI Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: idps-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@db:5432/idps_db
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Frontend Nginx React Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: idps-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

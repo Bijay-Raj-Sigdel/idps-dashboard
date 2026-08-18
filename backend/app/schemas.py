@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import datetime
 
 class PredictionRequest(BaseModel):
@@ -70,6 +70,7 @@ class PredictionLogOut(BaseModel):
     timestamp: datetime
     predicted_label: str
     prediction_id: int
+    input_features: Dict[str, Any]
     confidence: float
     probabilities: Optional[Dict[str, float]] = None
 

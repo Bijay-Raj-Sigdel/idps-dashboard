@@ -76,4 +76,26 @@ class ModelHandler:
             "probabilities": probabilities,
         }
 
+    def get_feature_importance(self) -> List[Dict[str, Any]]:
+        """
+        Pairs model feature_importances_ with expected_features 
+        and returns them sorted descending by importance.
+        """
+        if self.model is None or not hasattr(self.model, "feature_importances_"):
+            return []
+
+        importances = self.model.feature_importances_
+            
+        feature_importance_list = [
+            {
+                "feature": feature,
+                "importance": float(importance)
+            }
+            for feature, importance in zip(self.expected_features, importances)
+        ]
+
+        # Sort descending by importance score
+        feature_importance_list.sort(key=lambda x: x["importance"], reverse=True)
+        return feature_importance_list
+
 model_handler = ModelHandler()

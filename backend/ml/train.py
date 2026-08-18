@@ -223,6 +223,41 @@ def main():
         print(f"  [WARNING] Could not parse labels for automated report: {e}")
 
 
+    # Model Interpretability (SNAP Analysis)
+    print("\n Running SHAP Explainability Analysis.")
+
+    try:
+        import shap
+        import matplotlib as plt
+
+        # Subsample X_test for speed (multi-class tree models can be slow)
+        sample_size = min(500, len(X_test))
+        X_shap = shap.sample(X_test, sample_size, random_state=42)
+
+        # Initialize TreeExplainer for Tree-based models (RF / XGBoost)
+        explainer = shap.TreeExplainer(winning_model)
+        shap_values = explainer(X_shap)
+
+        # Save SHAP Summary Plot
+        plt.figure(figsize=(12, 8))
+        shap.summary_plot(
+            shap_values, 
+            X_shap, 
+            class_names=label_encoder.classes_, 
+            show=False
+        )
+        
+        shap_plot_path = os.path.join(OUTPUT_ML_DIR, "shap_summary.png")
+        plt.tight_layout()
+        plt.savefig(shap_plot_path, dpi=300, bbox_inches="tight")
+        plt.close()
+
+        print(f"  [SAVED] SHAP Summary Plot -> {shap_plot_path}")
+
+    except Exception as e:
+        print(f"  [WARNING] SHAP analysis failed: {e}")
+
+        
     # 9. Serialize Production Artifacts
     print(f"\nSerializing training production artifacts to {OUTPUT_ML_DIR}...")
 

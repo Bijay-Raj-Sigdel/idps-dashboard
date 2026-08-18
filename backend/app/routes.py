@@ -1,16 +1,21 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+import random
+from datetime import datetime
+from typing import List, Optional
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from sqlalchemy import func, case
-from typing import List
 
+from app import schemas
 from app.db import get_db
+from app.db_models import PredictionLog
 from app.model import model_handler
 from app.schemas import PredictionRequest, PredictionResponse
-from app.db_models import PredictionLog
-from app import schemas
 
 router = APIRouter()
+
 
 @router.get("/health", status_code=status.HTTP_200_OK)
 def health_check(db: Session = Depends(get_db)):
@@ -43,44 +48,69 @@ def health_check(db: Session = Depends(get_db)):
         "model_loaded": model_loaded,
     }
 
+
 @router.post("/predict", response_model=PredictionResponse)
 def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
-    """Run real-time inference on a set of 15 network flow features."""
+    """Run real-time inference on a set of network flow features."""
     try:
         feature_dict = payload.model_dump(by_alias=True)
         result = model_handler.predict(feature_dict)
 
-        # Pass prediction_id to satisfy DB NOT NULL constraint
+        # Generate integer prediction_id upfront
+        gen_prediction_id = random.randint(1, 2_000_000_000)
+
+        # Log to Database
         log_entry = PredictionLog(
+            prediction_id=gen_prediction_id,
             input_features=feature_dict,
             predicted_label=result["prediction"],
             confidence=result["confidence"],
             probabilities=result["probabilities"],
         )
-        db.add(log_entry)
-        db.flush()  # Populates log_entry.id without committing transaction yet
 
-        log_entry.prediction_id = log_entry.id
+        db.add(log_entry)
         db.commit()
         db.refresh(log_entry)
 
-        result["prediction_id"] = log_entry.id
-
+        result["prediction_id"] = log_entry.prediction_id
         return result
-    
+
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
 
+
 @router.get("/logs", response_model=List[schemas.PredictionLogOut])
-def get_logs(limit: int = Query(default=20, le=100), db: Session = Depends(get_db)):
-    """Fetch recent prediction logs for the dashboard."""
-    logs = db.query(PredictionLog).order_by(PredictionLog.id.desc()).limit(limit).all()
+def get_logs(
+    limit: int = Query(default=20, le=100),
+    attack_type: Optional[str] = Query(default=None),
+    start_date: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """Fetch recent prediction logs with real-time dynamic filtering."""
+    query = db.query(PredictionLog)
+
+    # 1. Filter by Attack/Classification Type if specified
+    if attack_type and attack_type.strip() != "":
+        query = query.filter(
+            func.lower(PredictionLog.predicted_label)
+            == attack_type.lower().strip()
+        )
+
+    # 2. Filter by Start Date/Time if specified
+    if start_date and start_date.strip() != "":
+        try:
+            parsed_date = datetime.fromisoformat(start_date)
+            query = query.filter(PredictionLog.timestamp >= parsed_date)
+        except ValueError:
+            pass  # Ignore invalid date formats gracefully
+
+    logs = query.order_by(PredictionLog.id.desc()).limit(limit).all()
     return logs
 
-# 4. Analytics Summary
+
 @router.get("/stats/summary", response_model=schemas.StatsSummaryResponse)
 def get_stats_summary(db: Session = Depends(get_db)):
     """Aggregate statistics for Recharts dashboard graphs."""
@@ -88,7 +118,8 @@ def get_stats_summary(db: Session = Depends(get_db)):
     benign_count = (
         db.query(func.count(PredictionLog.id))
         .filter(PredictionLog.predicted_label == "BENIGN")
-        .scalar() or 0
+        .scalar()
+        or 0
     )
     threat_count = total_inspected - benign_count
     avg_conf = db.query(func.avg(PredictionLog.confidence)).scalar() or 0.0
@@ -104,25 +135,29 @@ def get_stats_summary(db: Session = Depends(get_db)):
     ]
 
     # Group by minute bucket
-    time_bucket = func.date_trunc('minute', PredictionLog.timestamp)
+    time_bucket = func.date_trunc("minute", PredictionLog.timestamp)
     volume_rows = (
         db.query(
             time_bucket.label("bucket"),
             func.count(PredictionLog.id).label("count"),
-            func.sum(case((PredictionLog.predicted_label != "BENIGN", 1), else_=0)).label("threats")
+            func.sum(
+                case((PredictionLog.predicted_label != "BENIGN", 1), else_=0)
+            ).label("threats"),
         )
-        .group_by(time_bucket)          
-        .order_by(time_bucket.desc())    
+        .group_by(time_bucket)
+        .order_by(time_bucket.desc())
         .limit(30)
         .all()
     )
-    volume_rows = list(reversed(volume_rows)) # chronological order for the chart
+    volume_rows = list(
+        reversed(volume_rows)
+    )  # chronological order for the chart
 
     volume_over_time = [
         {
             "time": bucket.strftime("%H:%M") if bucket else "--:--",
             "count": count,
-            "threats": int(threats or 0)
+            "threats": int(threats or 0),
         }
         for bucket, count, threats in volume_rows
     ]
@@ -131,7 +166,28 @@ def get_stats_summary(db: Session = Depends(get_db)):
         "total_inspected": total_inspected,
         "benign_count": benign_count,
         "threat_count": threat_count,
-        "avg_confidence": round(float(avg_conf) * 100, 2),
+        "avg_confidence": round(float(avg_conf), 2),
         "label_distribution": label_distribution,
-        "volume_over_time": volume_over_time
+        "volume_over_time": volume_over_time,
     }
+
+
+@router.get("/model/importance")
+def get_feature_importance():
+    """Fetch sorted feature importances from the loaded ML model."""
+    if not hasattr(model_handler.model, "feature_importances_"):
+        raise HTTPException(
+            status_code=400,
+            detail="Model does not support feature_importances_",
+        )
+
+    importances = model_handler.model.feature_importances_
+    features_sorted = sorted(
+        [
+            {"feature": name, "importance": float(imp)}
+            for name, imp in zip(model_handler.expected_features, importances)
+        ],
+        key=lambda x: x["importance"],
+        reverse=True,
+    )
+    return {"status": "success", "data": features_sorted}

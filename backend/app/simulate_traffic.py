@@ -7,7 +7,7 @@ URL = "http://127.0.0.1:8000/predict"
 
 # Base sample payload matching your 15 features
 def generate_mock_flow():
-    is_attack = random.random() < 0.3  # 30% chance of threat traffic
+    is_attack = random.random() < 0.5  # chance of threat traffic
     
     return {
         "Active Mean": round(random.uniform(0, 500 if is_attack else 10), 2),
@@ -28,7 +28,7 @@ def generate_mock_flow():
     }
 
 def run_simulation():
-    print("Starting IDPS Traffic Simulator... (Press CTRL+C to stop)")
+    print("Starting IDPS Traffic Simulator...")
     while True:
         payload = generate_mock_flow()
         try:
