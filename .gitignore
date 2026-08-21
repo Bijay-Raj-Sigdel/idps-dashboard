@@ -31,7 +31,7 @@ build/
 .env.local
 .env.*.local
 
-# Database / Local SQLite (If testing locally)
+# Database
 *.db
 *.sqlite3
 
@@ -39,8 +39,8 @@ build/
 .vscode/
 .idea/
 *.swp
-*.
 
 # ML Artifacts & Data
 backend/data/
 *.pkl
+*.csv
