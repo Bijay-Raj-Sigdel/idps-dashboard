@@ -24,6 +24,12 @@ import {
   Cell 
 } from 'recharts';
 
+const isBenignLabel = (label) => {
+  if (!label) return false;
+  const str = String(label).trim().toUpperCase();
+  return str === 'BENIGN' || str === '0' || str === 'SAFE';
+};
+
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const COLOR_MAP = {
@@ -266,13 +272,22 @@ export default function Dashboard() {
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        log.predicted_label === 'BENIGN' 
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                      }`}>
-                        {log.predicted_label}
-                      </span>
+                      {(() => {
+                        // 1. Fallback through all possible property names
+                        const rawLabel = log.predicted_label || log.prediction || log.attack_type || 'SAFE';
+                        const isSafe = isBenignLabel(rawLabel);
+                        
+                        return (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              isSafe 
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            }`}>
+                            {/* 2. Explicitly render rawLabel instead of log.prediction */}
+                            {isSafe ? 'Safe' : String(rawLabel)}
+                          </span>
+                        );
+                      })()} {/* Ensure standard function call execution () is present here */}
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-300 text-xs">
                       {(log.confidence * 100).toFixed(1)}%

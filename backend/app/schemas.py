@@ -25,8 +25,10 @@ class PredictionRequest(BaseModel):
     active_mean: float = Field(..., alias="Active Mean")
     idle_mean: float = Field(..., alias="Idle Mean")
 
-    model_config = ConfigDict(
+    attack_type: Optional[str] = Field(default=None, alias="attack_type")
 
+    model_config = ConfigDict(
+        extra="allow",
         json_schema_extra={
             "example": {
                 "Destination Port": 80,
@@ -69,6 +71,7 @@ class PredictionLogOut(BaseModel):
     id: int
     timestamp: datetime
     predicted_label: str
+    ground_truth_label: Optional[str] = None
     prediction_id: int
     input_features: Dict[str, Any]
     confidence: float

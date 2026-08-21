@@ -2,47 +2,79 @@ import time
 import random
 import requests
 
-# URL of your local FastAPI endpoint
+# URL of local FastAPI endpoint
 URL = "http://127.0.0.1:8000/predict"
 
-# Base sample payload matching your 15 features
 def generate_mock_flow():
-    is_attack = random.random() < 0.5  # chance of threat traffic
-    
-    return {
-        "Active Mean": round(random.uniform(0, 500 if is_attack else 10), 2),
-        "Average Packet Size": random.randint(200, 1200) if is_attack else random.randint(40, 150),
-        "Bwd Packet Length Mean": random.randint(100, 800),
-        "Destination Port": random.choice([80, 443, 22, 8080, 21]),
-        "Flow Bytes/s": random.randint(5000, 500000) if is_attack else random.randint(100, 2000),
-        "Flow Duration": random.randint(100, 10000),
-        "Flow Packets/s": random.randint(50, 1000) if is_attack else random.randint(1, 20),
-        "Fwd Packet Length Mean": random.randint(20, 200),
-        "Idle Mean": 0,
-        "Packet Length Mean": random.randint(50, 500),
-        "Packet Length Std": round(random.uniform(5, 50), 2),
-        "Total Backward Packets": random.randint(1, 50),
-        "Total Fwd Packets": random.randint(1, 50),
-        "Total Length of Bwd Packets": random.randint(100, 5000),
-        "Total Length of Fwd Packets": random.randint(100, 5000)
+    # Includes weak classes to demonstrate live model degradation
+    traffic_type = random.choices(
+        population=[
+            'BENIGN', 'DDoS', 'PortScan', 'Bot', 'SSH-Patator',
+            'Web Attack - XSS', 'Web Attack - Brute Force', 'Web Attack - Sql Injection', 'Heartbleed'
+        ],
+        weights=[0.20, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
+    )[0]
+
+    base_features = {
+        "Active Mean": 0, "Average Packet Size": 60, "Bwd Packet Length Mean": 40,
+        "Destination Port": 80, "Flow Bytes/s": 1000, "Flow Duration": 100,
+        "Flow Packets/s": 10, "Fwd Packet Length Mean": 40, "Idle Mean": 0,
+        "Packet Length Mean": 50, "Packet Length Std": 5, "Total Backward Packets": 2,
+        "Total Fwd Packets": 2, "Total Length of Bwd Packets": 80, "Total Length of Fwd Packets": 80,
+        "attack_type": traffic_type
     }
 
+    if traffic_type == 'DDoS':
+        base_features.update({
+            "Destination Port": 80, "Flow Bytes/s": random.randint(50000000, 100000000),
+            "Flow Duration": random.randint(10, 500), "Flow Packets/s": random.randint(100000, 500000),
+            "Total Fwd Packets": random.randint(500, 2000), "attack_type": "DDoS"
+        })
+    elif traffic_type == 'PortScan':
+        base_features.update({
+            "Destination Port": random.choice([21, 22, 23, 25, 53, 80, 443, 8080]),
+            "Flow Duration": random.randint(1, 50), "Flow Packets/s": random.randint(100, 500),
+            "attack_type": "PortScan"
+        })
+    elif traffic_type == 'Bot':
+        base_features.update({
+            "Destination Port": 8080, "Idle Mean": round(random.uniform(1000, 5000), 2),
+            "attack_type": "Bot"
+        })
+    elif traffic_type == 'SSH-Patator':
+        base_features.update({
+            "Destination Port": 22, "Flow Packets/s": random.randint(200, 800),
+            "attack_type": "SSH-Patator"
+        })
+    elif 'Web Attack' in traffic_type:
+        base_features.update({
+            "Destination Port": 80, "Flow Duration": random.randint(100, 1000),
+            "Average Packet Size": random.randint(120, 300),
+            "attack_type": traffic_type
+        })
+    elif traffic_type == 'Heartbleed':
+        base_features.update({
+            "Destination Port": 443, "Flow Duration": random.randint(50, 300),
+            "Fwd Packet Length Mean": random.randint(10, 30),
+            "attack_type": "Heartbleed"
+        })
+
+    return base_features
+
 def run_simulation():
-    print("Starting IDPS Traffic Simulator...")
+    print("Starting Multi-Class Threat Simulator...")
     while True:
         payload = generate_mock_flow()
         try:
             res = requests.post(URL, json=payload)
             if res.status_code == 200:
                 data = res.json()
-                print(f"[SENT] Pred: {data.get('prediction')} | Conf: {data.get('confidence')} | ID: {data.get('prediction_id')}")
+                print(f"[SENT] Sent: {payload['attack_type']} | Pred: {data.get('prediction')}")
             else:
-                print(f"[ERROR] HTTP {res.status_code}: {res.text}")
+                print(f"[ERROR] HTTP {res.status_code}: {res.text}", flush=True)
         except Exception as e:
-            print(f"[CONNECTION FAILED] Ensure FastAPI is running on port 8000. Error: {e}")
-        
-        # Sleep 1 to 3 seconds between requests
-        time.sleep(random.uniform(1.0, 3.0))
+            print(f"[ERROR] {e}", flush=True)
+        time.sleep(0.3)
 
 if __name__ == "__main__":
     run_simulation()

@@ -5,7 +5,7 @@ simulate_traffic.py's synthetic "attack-like" values, which may not actually
 resemble the traffic patterns the model was trained to recognize.
 
 Usage:
-    python test_known_attacks.py
+    python test_attacks.py
 
 Adjust DATA_DIR to point at the folder containing your 8 CICIDS2017 CSVs
 (the same ones train.py consumes), and SAMPLES_PER_LABEL to control how many
@@ -23,7 +23,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
 URL = "http://127.0.0.1:8000/predict"
 SAMPLES_PER_LABEL = 5
 
-# The 15 raw column names the model expects (must match schemas.py aliases)
+# The 15 raw column names the model expects (Matches schemas.py aliases)
 FEATURES = [
     "Destination Port",
     "Flow Duration",
@@ -45,8 +45,8 @@ FEATURES = [
 # Labels worth specifically checking: strong classes as a sanity check,
 # plus the known-weak classes from Week 1's confusion-matrix diagnostics.
 LABELS_TO_TEST = [
-    "DDoS",                          # strong class — should classify correctly
-    "PortScan",                      # strong class — should classify correctly
+    "DDoS",                          # strong class 
+    "PortScan",                      # strong class 
     "Web Attack - Sql Injection",    # weak class
     "Web Attack - XSS",              # weak class
     "Web Attack - Brute Force",      # weak class

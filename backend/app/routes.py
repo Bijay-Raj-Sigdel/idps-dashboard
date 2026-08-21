@@ -56,6 +56,12 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
         feature_dict = payload.model_dump(by_alias=True)
         result = model_handler.predict(feature_dict)
 
+        # Unaltered ML model output
+        predicted_label = str(result["prediction"])
+
+        # Simulator ground truth
+        ground_truth = feature_dict.get("attack_type", None)
+
         # Generate integer prediction_id upfront
         gen_prediction_id = random.randint(1, 2_000_000_000)
 
@@ -63,7 +69,8 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
         log_entry = PredictionLog(
             prediction_id=gen_prediction_id,
             input_features=feature_dict,
-            predicted_label=result["prediction"],
+            predicted_label=predicted_label,
+            ground_truth_label=ground_truth,
             confidence=result["confidence"],
             probabilities=result["probabilities"],
         )
@@ -191,3 +198,36 @@ def get_feature_importance():
         reverse=True,
     )
     return {"status": "success", "data": features_sorted}
+
+@router.get("/stats/accuracy")
+def get_accuracy_stats(db: Session = Depends(get_db)):
+    # Fetch logs with ground truth values
+    logs = db.query(PredictionLog).filter(PredictionLog.ground_truth_label.isnot(None)).all()
+    
+    if not logs:
+        return {"overall_accuracy": 0.0, "total_samples": 0, "per_class_accuracy": {}}
+    
+    total_samples = len(logs)
+    correct_predictions = sum(1 for log in logs if log.predicted_label == log.ground_truth_label)
+    overall_accuracy = round(correct_predictions / total_samples, 4)
+    
+    # Calculate per-class breakdown
+    class_stats = {}
+    for log in logs:
+        gt = log.ground_truth_label
+        if gt not in class_stats:
+            class_stats[gt] = {"correct": 0, "total": 0}
+        class_stats[gt]["total"] += 1
+        if log.predicted_label == gt:
+            class_stats[gt]["correct"] += 1
+            
+    per_class_acc = {
+        cls: round(data["correct"] / data["total"], 4)
+        for cls, data in class_stats.items()
+    }
+    
+    return {
+        "overall_accuracy": overall_accuracy,
+        "total_samples": total_samples,
+        "per_class_accuracy": per_class_acc
+    }

@@ -23,7 +23,7 @@ export default function FilterBar({ filters, setFilters }) {
           className="bg-slate-950 text-slate-200 border border-slate-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
         >
           <option value="">All Attack Types</option>
-          <option value="BENIGN">BENIGN</option>
+          <option value="BENIGN">Safe</option>
           <option value="DDoS">DDoS</option>
           <option value="PortScan">PortScan</option>
           <option value="Bot">Botnet</option>

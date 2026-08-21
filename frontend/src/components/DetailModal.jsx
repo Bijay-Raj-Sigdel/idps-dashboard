@@ -3,16 +3,14 @@ import { X, ShieldAlert, CheckCircle } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
-// Ultra-flexible feature value lookup
+// Flexible feature value lookup
 function getFeatureValue(inputFeatures, featureName) {
   if (!inputFeatures || typeof inputFeatures !== 'object') return 'N/A';
 
-  // 1. Direct match
   if (inputFeatures[featureName] !== undefined) {
     return inputFeatures[featureName];
   }
 
-  // 2. Normalized match (trims spaces, removes special chars, ignores case)
   const clean = (str) => String(str).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   const target = clean(featureName);
 
@@ -25,16 +23,53 @@ function getFeatureValue(inputFeatures, featureName) {
   return 'N/A';
 }
 
+// Friendly threat descriptions mapping
+const THREAT_MAPPING = {
+  BENIGN: {
+    title: 'Safe',
+    description: 'Normal, legitimate user traffic',
+    isSafe: true,
+  },
+  SAFE: {
+    title: 'Safe',
+    description: 'Normal, legitimate user traffic',
+    isSafe: true,
+  },
+  DDOS: {
+    title: 'DDoS (Traffic Flood)',
+    description: 'Massive flood overloading server bandwidth',
+    isSafe: false,
+  },
+  PORTSCAN: {
+    title: 'PortScan (Network Scan)',
+    description: 'Reconnaissance probing open server ports',
+    isSafe: false,
+  },
+  BOT: {
+    title: 'Botnet (Automated Bot)',
+    description: 'Automated script executing background traffic',
+    isSafe: false,
+  },
+};
+
+function getThreatInfo(rawLabel) {
+  if (!rawLabel) return THREAT_MAPPING.BENIGN;
+  
+  const cleanKey = String(rawLabel).trim().toUpperCase();
+  
+  return THREAT_MAPPING[cleanKey] || {
+    title: String(rawLabel),
+    description: 'Security anomaly detected',
+    isSafe: false,
+  };
+}
+
 export default function DetailModal({ prediction, onClose }) {
   const [topFeatures, setTopFeatures] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!prediction) return;
-
-    // DEBUG: Inspect prediction object in browser console (F12)
-    console.log('[DetailModal] Selected Prediction:', prediction);
-    console.log('[DetailModal] input_features payload:', prediction?.input_features);
 
     setLoading(true);
 
@@ -88,18 +123,43 @@ export default function DetailModal({ prediction, onClose }) {
           </button>
         </div>
 
-        {/* Prediction Status Badge */}
-        <div className="p-4 rounded-lg bg-slate-800 mb-6 flex items-center gap-3">
-          {prediction.predicted_label === 'BENIGN' ? (
-            <CheckCircle className="text-emerald-400" />
-          ) : (
-            <ShieldAlert className="text-rose-400" />
-          )}
-          <div>
-            <p className="text-sm text-slate-400">Classification</p>
-            <p className="text-lg font-semibold text-white">{prediction.predicted_label}</p>
-          </div>
-        </div>
+        {/* User-Friendly Classification Banner */}
+        {(() => {
+          const rawValue = prediction.predicted_label || prediction.prediction || prediction.attack_type;
+          const threat = getThreatInfo(rawValue);
+
+          return (
+            <div className={`p-4 rounded-lg mb-6 border ${
+              threat.isSafe 
+                ? 'bg-emerald-950/30 border-emerald-800/50' 
+                : 'bg-rose-950/30 border-rose-800/50'
+            }`}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  {threat.isSafe ? (
+                    <CheckCircle className="text-emerald-400 flex-shrink-0" size={24} />
+                  ) : (
+                    <ShieldAlert className="text-rose-400 flex-shrink-0" size={24} />
+                  )}
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Classification</p>
+                    <p className={`text-lg font-bold ${threat.isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {threat.title}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="text-xs font-mono px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                  RAW: {String(rawValue || 'N/A')}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-400 mt-2 pl-9 border-t border-slate-800/60 pt-2">
+                {threat.description}
+              </p>
+            </div>
+          );
+        })()}
 
         {/* Top 3 Features Section */}
         <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
