@@ -26,6 +26,7 @@ class PredictionRequest(BaseModel):
     idle_mean: float = Field(..., alias="Idle Mean")
 
     attack_type: Optional[str] = Field(default=None, alias="attack_type")
+    data_source: Optional[str] = "CICIDS2017"
 
     model_config = ConfigDict(
         extra="allow",

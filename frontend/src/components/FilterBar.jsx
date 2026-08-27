@@ -27,6 +27,18 @@ export default function FilterBar({ filters, setFilters }) {
           <option value="DDoS">DDoS</option>
           <option value="PortScan">PortScan</option>
           <option value="Bot">Botnet</option>
+          <option value="Dos Hulk">Dos Hulk</option>
+          <option value="DoS GoldenEye">DoS GoldenEye</option>
+          <option value="DoS Slowhttptest">DoS Slowhttptest</option>
+          <option value="DoS slowloris">DoS slowloris</option>
+          <option value="FTP-Patator">FTP-Patator</option>
+          <option value="SSH-Patator">SSH-Patator</option>
+          <option value="Web Attack - Brute Force">Web Attack - Brute Force</option>
+          <option value="	Web Attack - XSS">Web Attack - XSS</option>
+          <option value="Infiltration">Infiltration</option>
+          <option value="Web Attack - Sql Injection">Web Attack - Sql Injection</option>
+          <option value="	Heartbleed">Heartbleed</option>
+
         </select>
 
       </div>

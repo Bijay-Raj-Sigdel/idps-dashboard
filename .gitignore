@@ -44,3 +44,4 @@ build/
 backend/data/
 *.pkl
 *.csv
+*.parquet

@@ -61,6 +61,7 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
 
         # Simulator ground truth
         ground_truth = feature_dict.get("attack_type", None)
+        data_source = feature_dict.get("data_source", "CICIDS2017")
 
         # Generate integer prediction_id upfront
         gen_prediction_id = random.randint(1, 2_000_000_000)
@@ -71,6 +72,7 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
             input_features=feature_dict,
             predicted_label=predicted_label,
             ground_truth_label=ground_truth,
+            data_source=data_source,
             confidence=result["confidence"],
             probabilities=result["probabilities"],
         )

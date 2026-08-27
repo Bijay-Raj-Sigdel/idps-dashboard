@@ -1,0 +1,24 @@
+Cross-Dataset Evaluation (Train: 2017 | Test: 2018)
+Overall Accuracy: 0.7990
+
+                            precision    recall  f1-score   support
+
+                    BENIGN     0.8039    0.9969    0.8901   5329008
+                       Bot     0.0000    0.0000    0.0000    144535
+                      DDoS     0.0000    0.0000    0.0000    775955
+             DoS GoldenEye     0.0501    0.0290    0.0367     41406
+                  DoS Hulk     0.0000    0.0000    0.0000    145199
+          DoS Slowhttptest     0.0000    0.0000    0.0000        55
+             DoS slowloris     0.9515    0.7448    0.8355      9908
+               FTP-Patator     0.0001    0.0377    0.0002        53
+                Heartbleed     0.0000    0.0000    0.0000         0
+              Infiltration     0.0000    0.0000    0.0000    118483
+                  PortScan     0.0000    0.0000    0.0000         0
+               SSH-Patator     0.0000    0.0000    0.0000     94048
+  Web Attack - Brute Force     0.0000    0.0000    0.0000       568
+Web Attack - Sql Injection     0.0000    0.0000    0.0000        85
+          Web Attack - XSS     0.0000    0.0000    0.0000       229
+
+                  accuracy                         0.7990   6659532
+                 macro avg     0.1204    0.1206    0.1175   6659532
+              weighted avg     0.6450    0.7990    0.7137   6659532

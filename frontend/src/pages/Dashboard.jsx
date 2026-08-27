@@ -33,11 +33,22 @@ const isBenignLabel = (label) => {
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 const COLOR_MAP = {
-  BENIGN: '#10b981',
-  DDoS: '#f43f5e',
-  PortScan: '#f59e0b',
-  Bot: '#8b5cf6',
-  DEFAULT: '#6366f1'
+  'BENIGN': '#10b981',
+  'DDoS': '#ef4444',
+  'DoS Hulk': '#dc2626',
+  'DoS GoldenEye': '#f59e0b',
+  'DoS slowloris': '#fb923c',
+  'DoS Slowhttptest': '#f97316',
+  'PortScan': '#6366f1',
+  'Infiltration': '#14b8a6',
+  'Bot': '#8b5cf6',
+  'FTP-Patator': '#3b82f6',
+  'SSH-Patator': '#06b6d4',
+  'Heartbleed': '#ec4899',
+  'Web Attack - Brute Force': '#eab308',
+  'Web Attack - Sql Injection': '#a855f7',
+  'Web Attack - XSS': '#d97706',
+  'DEFAULT': '#64748b'
 };
 
 export default function Dashboard() {

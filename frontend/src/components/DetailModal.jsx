@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, ShieldAlert, CheckCircle } from 'lucide-react';
+import { X, ShieldAlert, CheckCircle, Info, ShieldCheck } from 'lucide-react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
@@ -26,28 +26,73 @@ function getFeatureValue(inputFeatures, featureName) {
 // Friendly threat descriptions mapping
 const THREAT_MAPPING = {
   BENIGN: {
-    title: 'Safe',
-    description: 'Normal, legitimate user traffic',
+    title: 'Safe Traffic',
+    description: 'Normal, legitimate user network activity.',
+    impact: 'None. System operating normally.',
+    action: 'No action required.',
     isSafe: true,
   },
   SAFE: {
-    title: 'Safe',
-    description: 'Normal, legitimate user traffic',
+    title: 'Safe Traffic',
+    description: 'Normal, legitimate user network activity.',
+    impact: 'None. System operating normally.',
+    action: 'No action required.',
     isSafe: true,
   },
   DDOS: {
     title: 'DDoS (Traffic Flood)',
-    description: 'Massive flood overloading server bandwidth',
+    description: 'Distributed denial of service attack flooding server bandwidth with malicious requests.',
+    impact: 'High risk of service outages and server unresponsiveness.',
+    action: 'Enable rate-limiting, IP throttling, and upstream DDoS mitigation services.',
     isSafe: false,
   },
   PORTSCAN: {
-    title: 'PortScan (Network Scan)',
-    description: 'Reconnaissance probing open server ports',
+    title: 'PortScan (Reconnaissance)',
+    description: 'Automated scan probing open network ports to identify potential vulnerabilities.',
+    impact: 'Pre-attack reconnaissance targeting vulnerable active services.',
+    action: 'Block scanning IP address and restrict access to non-public ports via firewall.',
     isSafe: false,
   },
   BOT: {
-    title: 'Botnet (Automated Bot)',
-    description: 'Automated script executing background traffic',
+    title: 'Botnet Activity',
+    description: 'Automated malicious script executing continuous background command-and-control traffic.',
+    impact: 'Potential data exfiltration or resource hijacking.',
+    action: 'Isolate compromised target host and review active outbound TCP sessions.',
+    isSafe: false,
+  },
+  'WEB ATTACK - BRUTE FORCE': {
+    title: 'Web Attack - Brute Force',
+    description: 'Automated credential guessing attack submitting thousands of password combinations.',
+    impact: 'High risk of account takeover and credential compromise.',
+    action: 'Enforce strong CAPTCHA, lock out accounts after failed attempts, and mandate MFA.',
+    isSafe: false,
+  },
+  'WEB ATTACK - XSS': {
+    title: 'Web Attack - XSS',
+    description: 'Cross-Site Scripting injection attempt targeting client-side browser context.',
+    impact: 'Session hijacking, stolen session tokens, and unauthorized UI manipulation.',
+    action: 'Sanitize web inputs and enable strict Content Security Policy (CSP) headers.',
+    isSafe: false,
+  },
+  'WEB ATTACK - SQL INJECTION': {
+    title: 'Web Attack - SQL Injection',
+    description: 'Malicious SQL query injection targeting underlying database tables.',
+    impact: 'Critical risk of full database breach, data leaks, or data deletion.',
+    action: 'Use parameterized queries / prepared statements and audit web application firewalls.',
+    isSafe: false,
+  },
+  'FTP-PATATOR': {
+    title: 'FTP Brute Force',
+    description: 'Automated brute force attack against File Transfer Protocol service credentials.',
+    impact: 'Unauthorized file system access and confidential file leakage.',
+    action: 'Restrict FTP access to trusted IPs, implement IP banning, or switch to SFTP.',
+    isSafe: false,
+  },
+  'SSH-PATATOR': {
+    title: 'SSH Brute Force',
+    description: 'Automated login attempts against Secure Shell remote management access.',
+    impact: 'Complete server takeover and unauthorized shell access.',
+    action: 'Disable SSH password authentication, enforce public key login, and use Fail2ban.',
     isSafe: false,
   },
 };
@@ -59,7 +104,9 @@ function getThreatInfo(rawLabel) {
   
   return THREAT_MAPPING[cleanKey] || {
     title: String(rawLabel),
-    description: 'Security anomaly detected',
+    description: 'Anomalous network payload pattern detected by ML model.',
+    impact: 'Unrecognized anomaly pattern matching security threat rules.',
+    action: 'Inspect flow parameters and inspect source IP payload.',
     isSafe: false,
   };
 }
@@ -112,6 +159,9 @@ export default function DetailModal({ prediction, onClose }) {
 
   if (!prediction) return null;
 
+  const rawValue = prediction.predicted_label || prediction.prediction || prediction.attack_type;
+  const threat = getThreatInfo(rawValue);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex justify-end z-50">
       <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 p-6 h-full overflow-y-auto">
@@ -124,42 +174,35 @@ export default function DetailModal({ prediction, onClose }) {
         </div>
 
         {/* User-Friendly Classification Banner */}
-        {(() => {
-          const rawValue = prediction.predicted_label || prediction.prediction || prediction.attack_type;
-          const threat = getThreatInfo(rawValue);
-
-          return (
-            <div className={`p-4 rounded-lg mb-6 border ${
-              threat.isSafe 
-                ? 'bg-emerald-950/30 border-emerald-800/50' 
-                : 'bg-rose-950/30 border-rose-800/50'
-            }`}>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {threat.isSafe ? (
-                    <CheckCircle className="text-emerald-400 flex-shrink-0" size={24} />
-                  ) : (
-                    <ShieldAlert className="text-rose-400 flex-shrink-0" size={24} />
-                  )}
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Classification</p>
-                    <p className={`text-lg font-bold ${threat.isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {threat.title}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="text-xs font-mono px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">
-                  RAW: {String(rawValue || 'N/A')}
-                </span>
+        <div className={`p-4 rounded-lg mb-6 border ${
+          threat.isSafe 
+            ? 'bg-emerald-950/30 border-emerald-800/50' 
+            : 'bg-rose-950/30 border-rose-800/50'
+        }`}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              {threat.isSafe ? (
+                <CheckCircle className="text-emerald-400 flex-shrink-0" size={24} />
+              ) : (
+                <ShieldAlert className="text-rose-400 flex-shrink-0" size={24} />
+              )}
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Classification</p>
+                <p className={`text-lg font-bold ${threat.isSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {threat.title}
+                </p>
               </div>
-
-              <p className="text-xs text-slate-400 mt-2 pl-9 border-t border-slate-800/60 pt-2">
-                {threat.description}
-              </p>
             </div>
-          );
-        })()}
+
+            <span className="text-xs font-mono px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              RAW: {String(rawValue || 'N/A')}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-400 mt-2 pl-9 border-t border-slate-800/60 pt-2">
+            {threat.description}
+          </p>
+        </div>
 
         {/* Top 3 Features Section */}
         <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
@@ -175,7 +218,7 @@ export default function DetailModal({ prediction, onClose }) {
             No feature importance data available.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 mb-6">
             {topFeatures.map((item, idx) => (
               <div key={idx} className="p-3 bg-slate-800/50 rounded-md border border-slate-700/50">
                 <div className="flex justify-between text-sm mb-1">
@@ -192,6 +235,34 @@ export default function DetailModal({ prediction, onClose }) {
             ))}
           </div>
         )}
+
+        {/* Threat Intelligence / Description Section */}
+        <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/60 space-y-3">
+          <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
+            <Info size={16} className="text-indigo-400" />
+            <span>Threat Intelligence Details</span>
+          </div>
+          
+          <div className="space-y-2 text-xs">
+            <div>
+              <span className="text-slate-400 font-medium block">Description:</span>
+              <p className="text-slate-300">{threat.description}</p>
+            </div>
+            
+            <div>
+              <span className="text-slate-400 font-medium block">Potential Impact:</span>
+              <p className={threat.isSafe ? "text-emerald-400" : "text-amber-400"}>
+                {threat.impact}
+              </p>
+            </div>
+
+            <div>
+              <span className="text-slate-400 font-medium block">Recommended Action:</span>
+              <p className="text-indigo-300">{threat.action}</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
