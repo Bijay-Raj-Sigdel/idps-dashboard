@@ -1,28 +1,7 @@
-# Raw dataset (not needed at runtime, and shouldn't exist in this dir anyway)
-data/
-
-# Large local artifacts not needed inside the image
-ml/*.csv
-ml/model_rf.pkl
-ml/cm_*.txt
-ml/metrics_*.txt
-ml/scratch_results.txt
-
-# Python cache / envs
-__pycache__/
-*.pyc
-.venv/
-venv/
-env/
-
-# Env files / secrets
+node_modules/
+dist/
 .env
 .env.local
-
-# VCS / editor
 .git/
 .gitignore
-.vscode/
-
-# Tests (not needed in the runtime image)
-tests/
+README.md
