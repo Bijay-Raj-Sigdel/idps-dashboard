@@ -61,11 +61,11 @@ class PredictionResponse(BaseModel):
     prediction_id: int
     confidence: Optional[float] = None
     probabilities: Optional[Dict[str, float]] = None
+    is_anomaly: bool = False
 
 class PredictionLogOut(BaseModel):
     """
     Pydantic schema for serializing PredictionLog rows returned by GET /logs.
-    from_attributes=True lets this read directly off the SQLAlchemy ORM object.
     """
     model_config = ConfigDict(from_attributes=True)
 
@@ -77,19 +77,24 @@ class PredictionLogOut(BaseModel):
     input_features: Dict[str, Any]
     confidence: float
     probabilities: Optional[Dict[str, float]] = None
+    is_anomaly: bool = False
+
 
 class LabelCount(BaseModel):
     label: str
     count: int
+
 
 class VolumeBucket(BaseModel):
     time: str
     count: int
     threats: int
 
+
 class StatsSummaryResponse(BaseModel):
     total_inspected: int
     benign_count: int
+    suspicious_benign_count: int
     threat_count: int
     avg_confidence: float
     label_distribution: List[LabelCount]

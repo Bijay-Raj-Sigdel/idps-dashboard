@@ -1,0 +1,19 @@
+Isolation Forest Anomaly Detection — evaluated on 2018 holdout slice
+Trained on BENIGN-only traffic from the combined 2017 + 2018-train pool
+BENIGN false-positive rate: 2.82%
+
+Label                                  n    %% flagged anomaly
+----------------------------------------------------------------------
+BENIGN                           1598703                 2.82%
+Bot                                43361                 0.00%
+DDoS                              232787                 0.33%
+DoS GoldenEye                      12422                 1.19%
+DoS Hulk                           43560                 0.00%
+DoS Slowhttptest                      16                 0.00%
+DoS slowloris                       2972                47.01%
+FTP-Patator                           16                 0.00%
+Infiltration                       35545                 3.04%  <-- target class
+SSH-Patator                        28214                 0.00%
+Web Attack - Brute Force             170                48.82%  <-- target class
+Web Attack - Sql Injection            25                 4.00%  <-- target class
+Web Attack - XSS                      69                53.62%  <-- target class

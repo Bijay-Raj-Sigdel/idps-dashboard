@@ -1,0 +1,24 @@
+Blended Model Evaluation (2017 + 2018-train, 20% combined held-out test)
+Winner: Random Forest | Macro-F1: 0.7277
+
+                            precision    recall  f1-score   support
+
+                    BENIGN     0.9902    0.9132    0.9501   1137847
+                       Bot     0.9341    0.9906    0.9615     20621
+                      DDoS     0.9731    0.9531    0.9630    134172
+             DoS GoldenEye     0.8849    0.9738    0.9272      7853
+                  DoS Hulk     0.8467    0.9794    0.9082     53597
+          DoS Slowhttptest     0.8399    0.9895    0.9086      1050
+             DoS slowloris     0.9670    0.9950    0.9808      2383
+               FTP-Patator     0.9781    0.9884    0.9832       859
+                Heartbleed     1.0000    1.0000    1.0000         2
+              Infiltration     0.0735    0.4049    0.1244     16595
+                  PortScan     0.9887    0.9994    0.9940     18124
+               SSH-Patator     0.9866    0.9981    0.9923     13796
+  Web Attack - Brute Force     0.0735    0.5616    0.1299       365
+Web Attack - Sql Injection     0.0090    0.4375    0.0176        16
+          Web Attack - XSS     0.0398    0.5556    0.0742       162
+
+                  accuracy                         0.9171   1407442
+                 macro avg     0.7057    0.8493    0.7277   1407442
+              weighted avg     0.9703    0.9171    0.9408   1407442

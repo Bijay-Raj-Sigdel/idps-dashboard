@@ -56,17 +56,12 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
         feature_dict = payload.model_dump(by_alias=True)
         result = model_handler.predict(feature_dict)
 
-        # Unaltered ML model output
         predicted_label = str(result["prediction"])
-
-        # Simulator ground truth
         ground_truth = feature_dict.get("attack_type", None)
         data_source = feature_dict.get("data_source", "CICIDS2017")
-
-        # Generate integer prediction_id upfront
         gen_prediction_id = random.randint(1, 2_000_000_000)
 
-        # Log to Database
+        # Log to Database including is_anomaly output
         log_entry = PredictionLog(
             prediction_id=gen_prediction_id,
             input_features=feature_dict,
@@ -75,6 +70,7 @@ def predict(payload: PredictionRequest, db: Session = Depends(get_db)):
             data_source=data_source,
             confidence=result["confidence"],
             probabilities=result["probabilities"],
+            is_anomaly=result.get("is_anomaly", False),
         )
 
         db.add(log_entry)
@@ -130,10 +126,21 @@ def get_stats_summary(db: Session = Depends(get_db)):
         .scalar()
         or 0
     )
+
+    # Query count of BENIGN logs flagged as anomalous
+    suspicious_benign_count = (
+        db.query(func.count(PredictionLog.id))
+        .filter(
+            PredictionLog.predicted_label == "BENIGN",
+            PredictionLog.is_anomaly == True,
+        )
+        .scalar()
+        or 0
+    )
+
     threat_count = total_inspected - benign_count
     avg_conf = db.query(func.avg(PredictionLog.confidence)).scalar() or 0.0
 
-    # Group by label
     label_rows = (
         db.query(PredictionLog.predicted_label, func.count(PredictionLog.id))
         .group_by(PredictionLog.predicted_label)
@@ -143,7 +150,6 @@ def get_stats_summary(db: Session = Depends(get_db)):
         {"label": label, "count": count} for label, count in label_rows
     ]
 
-    # Group by minute bucket
     time_bucket = func.date_trunc("minute", PredictionLog.timestamp)
     volume_rows = (
         db.query(
@@ -158,9 +164,7 @@ def get_stats_summary(db: Session = Depends(get_db)):
         .limit(30)
         .all()
     )
-    volume_rows = list(
-        reversed(volume_rows)
-    )  # chronological order for the chart
+    volume_rows = list(reversed(volume_rows))
 
     volume_over_time = [
         {
@@ -174,6 +178,7 @@ def get_stats_summary(db: Session = Depends(get_db)):
     return {
         "total_inspected": total_inspected,
         "benign_count": benign_count,
+        "suspicious_benign_count": suspicious_benign_count,
         "threat_count": threat_count,
         "avg_confidence": round(float(avg_conf), 2),
         "label_distribution": label_distribution,

@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Boolean
 from app.db import Base
 
 
@@ -23,3 +23,5 @@ class PredictionLog(Base):
     prediction_id = Column(Integer, nullable=False)
     confidence = Column(Float, nullable=False)
     probabilities = Column(JSON, nullable=True)
+
+    is_anomaly = Column(Boolean, default=False, nullable=False, index=True)

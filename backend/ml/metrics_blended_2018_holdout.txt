@@ -1,0 +1,24 @@
+Blended Model — 2018 Holdout Evaluation (never trained on, 30% stratified slice)
+Overall Accuracy: 0.8797
+
+                            precision    recall  f1-score   support
+
+                    BENIGN     0.9848    0.8733    0.9257   1598703
+                       Bot     0.9502    0.9943    0.9717     43361
+                      DDoS     0.9664    0.9421    0.9541    232787
+             DoS GoldenEye     0.8571    0.9648    0.9077     12422
+                  DoS Hulk     0.6779    0.9488    0.7908     43560
+          DoS Slowhttptest     0.0000    0.0000    0.0000        16
+             DoS slowloris     0.9378    0.9939    0.9650      2972
+               FTP-Patator     0.0000    0.0000    0.0000        16
+                Heartbleed     0.0000    0.0000    0.0000         0
+              Infiltration     0.0734    0.4024    0.1242     35545
+                  PortScan     0.0000    0.0000    0.0000         0
+               SSH-Patator     0.9900    0.9988    0.9944     28214
+  Web Attack - Brute Force     0.0307    0.5529    0.0582       170
+Web Attack - Sql Injection     0.0068    0.4400    0.0133        25
+          Web Attack - XSS     0.0288    0.5942    0.0549        69
+
+                  accuracy                         0.8797   1997860
+                 macro avg     0.4336    0.5804    0.4507   1997860
+              weighted avg     0.9581    0.8797    0.9136   1997860

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import FilterBar from '../components/FilterBar';
 import DetailModal from '../components/DetailModal';
+import SuspiciousBenignBar from '../components/SuspiciousBenignBar';
+import ModelPerformance from '../components/ModelPerformance';
 import { 
   Activity, 
   ShieldAlert, 
@@ -227,7 +229,9 @@ export default function Dashboard() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
+                    labelStyle={{ color: '#f8fafc', fontWeight: 600 }}
+                    itemStyle={{ color: '#f8fafc' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -244,6 +248,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* 2.5 SUSPICIOUS BENIGN BAR + MODEL PERFORMANCE */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <SuspiciousBenignBar />
+        </div>
+        <div className="lg:col-span-2">
+          <ModelPerformance />
+        </div>
+      </div>
 
       {/* 3. FILTER BAR */}
       <FilterBar filters={filters} setFilters={setFilters} />

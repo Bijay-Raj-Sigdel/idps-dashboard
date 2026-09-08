@@ -43,5 +43,7 @@ build/
 # ML Artifacts & Data
 backend/data/
 *.pkl
-*.csv
 *.parquet
+
+backend/ml/*.csv
+backend/data/**/*.csv
